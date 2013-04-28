@@ -3,21 +3,27 @@
 from appindicator import Indicator, STATUS_ACTIVE, CATEGORY_SYSTEM_SERVICES
 from subprocess import check_output, CalledProcessError
 from gobject import timeout_add
-from gtk import Menu, MenuItem, main, main_quit
+from time import strftime
+from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
 
 class PingIndicator():
 
     def __init__( self ):
         self.LABEL_GUIDE = '9999'
+        self.online = True
 
         self.indicator = Indicator( 'ping-indicator', 'ping-indicator', CATEGORY_SYSTEM_SERVICES, '' )
         self.indicator.set_status( STATUS_ACTIVE )
 
-        menu_item_exit = MenuItem( 'Exit' )
+        menu_item_since = MenuItem( 'Online since: ' )
+        menu_separator  = SeparatorMenuItem()
+        menu_item_exit =  MenuItem( 'Exit' )
         menu_item_exit.connect( 'activate', self.stop )
 
         indicator_menu = Menu()
-        indicator_menu.append( menu_item_exit )
+        indicator_menu.append( menu_item_since )
+        indicator_menu.append( menu_separator  )
+        indicator_menu.append( menu_item_exit  )
         indicator_menu.show_all()
 
         self.indicator.set_menu( indicator_menu )
@@ -40,9 +46,16 @@ class PingIndicator():
             for line in output.splitlines():
                 if line.find( "time=") != -1:
                     new_label = line[ line.find( "time=") + 5 : -3 ].center( 4 )
+
+                    if not self.online:
+                        self.online = True
+                        self.indicator.get_menu().get_children()[0].set_label( 'Online since: ' + strftime( '%H:%M:%S' ) )
+
                     break
         except CalledProcessError:
-            pass
+            if self.online:
+                self.online = False
+                self.indicator.get_menu().get_children()[0].set_label( 'Offline since: ' + strftime( '%H:%M:%S' ) )
 
         self.indicator.set_label( new_label, self.LABEL_GUIDE )
         return True
