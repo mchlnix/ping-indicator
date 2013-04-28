@@ -15,7 +15,7 @@ class PingIndicator():
         self.indicator = Indicator( 'ping-indicator', 'ping-indicator', CATEGORY_SYSTEM_SERVICES, '' )
         self.indicator.set_status( STATUS_ACTIVE )
 
-        menu_item_since = MenuItem( 'Online since: ' )
+        menu_item_since = MenuItem( 'Online since: ' + strftime( '%H:%M:%S' ) )
         menu_separator  = SeparatorMenuItem()
         menu_item_exit =  MenuItem( 'Exit' )
         menu_item_exit.connect( 'activate', self.stop )
@@ -49,7 +49,7 @@ class PingIndicator():
 
                     if not self.online:
                         self.online = True
-                        self.indicator.get_menu().get_children()[0].set_label( 'Online since: ' + strftime( '%H:%M:%S' ) )
+                        self.indicator.get_menu().get_children()[0].set_label( 'Last disconnect: ' + strftime( '%H:%M:%S' ) )
 
                     break
         except CalledProcessError:
