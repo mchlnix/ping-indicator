@@ -1,64 +1,58 @@
+#!/usr/bin/python2.7 -u
+
 from appindicator import Indicator, STATUS_ACTIVE, CATEGORY_SYSTEM_SERVICES
-import pygtk
-import gtk
 from subprocess import check_output, CalledProcessError
-import gobject
-pygtk.require( '2.0' )
-
-LABEL_GUIDE = '9999 ms'
-
+from gobject import timeout_add
+from gtk import Menu, MenuItem, main, main_quit
 
 class PingIndicator():
 
     def __init__( self ):
-        #Setting up the indicator
+        self.LABEL_GUIDE = '9999'
 
         self.indicator = Indicator( 'ping-indicator', 'ping-indicator', CATEGORY_SYSTEM_SERVICES, '' )
-        self.indicator.set_attention_icon( 'amazonCheck_indicator_attention' )
         self.indicator.set_status( STATUS_ACTIVE )
 
-        menu_item_exit = gtk.MenuItem( 'Exit' )
-        menu_item_exit.connect( 'activate', self.exit_application )
+        menu_item_exit = MenuItem( 'Exit' )
+        menu_item_exit.connect( 'activate', self.stop )
 
-        indicator_menu = gtk.Menu()
+        indicator_menu = Menu()
         indicator_menu.append( menu_item_exit )
         indicator_menu.show_all()
 
         self.indicator.set_menu( indicator_menu )
-        self.indicator.set_property( 'label-guide', LABEL_GUIDE )
-        self.indicator.set_label( 'Ping', LABEL_GUIDE )
+        self.indicator.set_label( 'Ping', self.LABEL_GUIDE )
 
-        gobject.timeout_add( 2000, self.update_indicator )
+        timeout_add( 2000, self.update_indicator )
 
 
-    def exit_application( self, widget ):
-        gtk.main_quit()
+    def stop( self, widget=None ):
+        main_quit()
 
 
     def update_indicator( self ):
-        #print self.indicator.get_label_guide()
+
+        new_label = "offline"
 
         try:
             output = check_output( [ "ping", "-c", "1", "-W", "2", "8.8.8.8" ] )
 
             for line in output.splitlines():
-                new_label = "NO-CON"
-
                 if line.find( "time=") != -1:
-                    new_label = line[ line.find( "time=") + 5 : -3 ]
+                    new_label = line[ line.find( "time=") + 5 : -3 ].center( 4 )
                     break
-
         except CalledProcessError:
-            new_label = "offline"
+            pass
 
-        self.indicator.set_label( new_label, LABEL_GUIDE )
-
+        self.indicator.set_label( new_label, self.LABEL_GUIDE )
         return True
 
 
-myIndicator = PingIndicator()
+    def run( self ):
+        main()
 
-gtk.main()
+if __name__ == '__main__':
+    PingIndicator().run()
 
 
 
