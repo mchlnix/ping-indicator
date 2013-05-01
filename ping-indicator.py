@@ -19,15 +19,18 @@ class PingIndicator():
         self.indicator.set_status( STATUS_ACTIVE )
 
         menu_item_since   = MenuItem( 'Online since: ' + strftime( '%H:%M:%S' ) )
-        menu_item_packets = MenuItem( 'Packets lost/send: %d / %d' % ( self.packets_lost, self.packets_send ) )
-        menu_separator  = SeparatorMenuItem()
-        menu_item_exit =  MenuItem( 'Exit' )
-        menu_item_exit.connect( 'activate', self.stop )
+        menu_item_packets = MenuItem( 'Packets lost/send: %d/%d = 0.00%%' % ( self.packets_lost, self.packets_send ) )
+        menu_separator    = SeparatorMenuItem()
+        menu_item_reset   = MenuItem( 'Reset' )
+        menu_item_exit    = MenuItem( 'Exit'  )
+        menu_item_exit.connect(  'activate', self.stop  )
+        menu_item_reset.connect( 'activate', self.reset )
 
         indicator_menu = Menu()
         indicator_menu.append( menu_item_since   )
         indicator_menu.append( menu_item_packets )
         indicator_menu.append( menu_separator    )
+        indicator_menu.append( menu_item_reset   )
         indicator_menu.append( menu_item_exit    )
         indicator_menu.show_all()
 
@@ -69,6 +72,14 @@ class PingIndicator():
         self.indicator.get_menu().get_children()[1].set_label( 'Packets lost/send: %d/%d = %.2f%%' % ( self.packets_lost, self.packets_send, self.packets_lost / float( self.packets_send ) * 100 ) )
 
         return True
+
+
+    def reset( self, widget=None ):
+        self.packets_send = 0
+        self.packets_lost = 0
+
+        self.indicator.get_menu().get_children()[0].set_label( 'Online since: ' + strftime( '%H:%M:%S' ) )
+        self.indicator.get_menu().get_children()[1].set_label( 'Packets lost/send: %d/%d = 0.00%%' % ( self.packets_lost, self.packets_send ) )
 
 
     def run( self ):
