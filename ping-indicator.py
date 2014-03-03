@@ -21,7 +21,7 @@ from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
 from sys import argv, exit
 
 timeout = 2000 # in ms
-packet_amount = 40 # also width of indicator icon in pixels
+packet_amount = 22 # also width of indicator icon in pixels
 min_scale = 1./100 # in 1/ms
 indicator_image_height = 22 # in unity
 mid_thres = 2/3.  # of timeout
