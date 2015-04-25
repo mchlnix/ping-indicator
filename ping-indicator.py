@@ -1,5 +1,7 @@
 #!/usr/bin/python2.7 -u
 
+# Now writes avg ping to log
+# Now keeps track of sent and lost pings and writes it to .config/pingindicator/ping.log
 # Now resets instantly
 # Now resets the indicator icon as well
 # Removed the string representation
@@ -16,11 +18,13 @@ from collections import deque
 from subprocess import check_output, CalledProcessError, STDOUT
 from ImageDraw import Draw
 from gobject import timeout_add
+from os.path import expanduser
 from random import random
 from Image import new
 from time import strftime
 from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
 from sys import argv, exit
+from os import makedirs
 
 timeout = 2000 # in ms
 packet_amount = 22 # also width of indicator icon in pixels
@@ -44,6 +48,12 @@ class PingIndicator():
         self.online = True
 
         self.packets = deque( [], packet_amount )
+        
+        self.lost = 0
+        self.sent = 0
+
+        self.log_path = expanduser("~/.config/pingindicator/")
+        self.log_file = "ping.log"
 
         self.indicator = Indicator( id='ping-indicator',
                                     icon_name='ping-indicator',
@@ -75,6 +85,7 @@ class PingIndicator():
 
         timeout_add( int(timeout*1.05), self.update_indicator )
 
+        timeout_add( 1*60*1000, self.write_log )
 
     def stop( self, widget=None ):
         main_quit()
@@ -125,6 +136,8 @@ class PingIndicator():
 
         #new_label = 'offline'
 
+        self.sent += 1
+
         try:
             output = check_output( [ 'ping', '-c', '1', '-W', str(timeout/1000),
                                      destination,
@@ -145,6 +158,7 @@ class PingIndicator():
                                                                              )
                     break
         except CalledProcessError:
+            self.lost += 1
             self.packets.append( timeout )
 
             if self.online:
@@ -182,6 +196,17 @@ class PingIndicator():
                         'Max: %dms, Min: %dms' %
                         ( max( self.packets ), min( self.packets ) ),
                                                              )
+
+    def write_log( self ):
+        try:
+            makedirs( self.log_path )
+        except OSError:
+            pass
+            
+        with open( self.log_path + self.log_file, "a+") as f:
+            f.write( "[{0}] {1:>8} packets sent, {2:>8} packets lost. Packet loss: {3:>3.2}%. Avg: {4:>4}ms\n".format( strftime('%d.%m.%Y - %H:%M:%S'), self.sent, self.lost, 100./self.sent*self.lost, avg(self.packets) ) )
+
+        return True
 
 def make_path():
     return '/tmp/' + str(int(random() * 10)) + '.png'
