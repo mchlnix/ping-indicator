@@ -1,5 +1,6 @@
 #!/usr/bin/python2.7 -u
 
+# Removes log functionality again
 # Now writes avg ping to log
 # Now keeps track of sent and lost pings and writes it to .config/pingindicator/ping.log
 # Now resets instantly
@@ -52,9 +53,6 @@ class PingIndicator():
         self.lost = 0
         self.sent = 0
 
-        self.log_path = expanduser("~/.config/pingindicator/")
-        self.log_file = "ping.log"
-
         self.indicator = Indicator( id='ping-indicator',
                                     icon_name='ping-indicator',
                                     category=CATEGORY_SYSTEM_SERVICES,
@@ -84,8 +82,6 @@ class PingIndicator():
         self.indicator.set_menu( indicator_menu )
 
         timeout_add( int(timeout*1.05), self.update_indicator )
-
-        timeout_add( 1*60*1000, self.write_log )
 
     def stop( self, widget=None ):
         main_quit()
@@ -196,17 +192,6 @@ class PingIndicator():
                         'Max: %dms, Min: %dms' %
                         ( max( self.packets ), min( self.packets ) ),
                                                              )
-
-    def write_log( self ):
-        try:
-            makedirs( self.log_path )
-        except OSError:
-            pass
-            
-        with open( self.log_path + self.log_file, "a+") as f:
-            f.write( "[{0}] {1:>8} packets sent, {2:>8} packets lost. Packet loss: {3:>3.2}%. Avg: {4:>4}ms\n".format( strftime('%d.%m.%Y - %H:%M:%S'), self.sent, self.lost, 100./self.sent*self.lost, avg(self.packets) ) )
-
-        return True
 
 def make_path():
     return '/tmp/' + str(int(random() * 10)) + '.png'
