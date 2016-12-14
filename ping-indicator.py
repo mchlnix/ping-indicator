@@ -38,7 +38,7 @@ avg = lambda x :  int( sum( x ) / len( x ) )
 
 class PingIndicator():
 
-    def __init__( self, address="8.8.8.8" ):
+    def __init__( self, address="8.8.8.8", name="Internet" ):
         self.icon = new( 'RGBA', ( packet_amount, indicator_image_height ) )
         self.icon.save( path )
 
@@ -59,7 +59,7 @@ class PingIndicator():
                                   )
         self.indicator.set_status( STATUS_ACTIVE )
 
-        menu_item_name     = MenuItem( 'Ping: Internet' )
+        menu_item_name     = MenuItem( 'Ping: %s' % name )
         menu_separator     = SeparatorMenuItem()
         menu_item_since    = MenuItem( 'Online since: '
                                         + strftime( '%H:%M:%S' ) )
