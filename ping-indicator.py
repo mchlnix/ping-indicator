@@ -60,21 +60,25 @@ class PingIndicator():
                                   )
         self.indicator.set_status( STATUS_ACTIVE )
 
+        menu_item_name     = MenuItem( 'Ping: Internet' )
+        menu_separator     = SeparatorMenuItem()
         menu_item_since    = MenuItem( 'Online since: '
                                         + strftime( '%H:%M:%S' ) )
         menu_item_packets1 = MenuItem( 'Lost: -, Avg: -' )
         menu_item_packets2 = MenuItem( 'Max: -, Min: -'  )
-        menu_separator     = SeparatorMenuItem()
+        menu_separator2    = SeparatorMenuItem()
         menu_item_reset    = MenuItem( 'Reset' )
         menu_item_exit     = MenuItem( 'Exit'  )
         menu_item_exit.connect(  'activate', self.stop  )
         menu_item_reset.connect( 'activate', self.reset )
 
         indicator_menu = Menu()
+        indicator_menu.append( menu_item_name     )
+        indicator_menu.append( menu_separator     )
         indicator_menu.append( menu_item_since    )
         indicator_menu.append( menu_item_packets1 )
         indicator_menu.append( menu_item_packets2 )
-        indicator_menu.append( menu_separator     )
+        indicator_menu.append( menu_separator2    )
         indicator_menu.append( menu_item_reset    )
         indicator_menu.append( menu_item_exit     )
         indicator_menu.show_all()
@@ -149,7 +153,7 @@ class PingIndicator():
 
                     if not self.online:
                         self.online = True
-                        self.indicator.get_menu().get_children()[0].set_label(
+                        self.indicator.get_menu().get_children()[2].set_label(
                                    'Last disconnect: ' + strftime( '%H:%M:%S' ),
                                                                              )
                     break
@@ -159,7 +163,7 @@ class PingIndicator():
 
             if self.online:
                 self.online = False
-                self.indicator.get_menu().get_children()[0].set_label(
+                self.indicator.get_menu().get_children()[2].set_label(
                                       'Offline since: ' + strftime( '%H:%M:%S' )
                                                                      )
 
@@ -172,11 +176,11 @@ class PingIndicator():
     def reset( self, widget=None ):
         self.packets.clear()
         self.update_icon()
-        self.indicator.get_menu().get_children()[0].set_label( 'Online since: '
+        self.indicator.get_menu().get_children()[2].set_label( 'Online since: '
                                                        + strftime( '%H:%M:%S' ),
                                                              )
-        self.indicator.get_menu().get_children()[1].set_label('Lost: -, Avg: -')
-        self.indicator.get_menu().get_children()[2].set_label('Max: -, Min: -' )
+        self.indicator.get_menu().get_children()[3].set_label('Lost: -, Avg: -')
+        self.indicator.get_menu().get_children()[4].set_label('Max: -, Min: -' )
 
 
     def run( self ):
@@ -184,11 +188,11 @@ class PingIndicator():
 
 
     def update_menu( self ):
-        self.indicator.get_menu().get_children()[1].set_label(
+        self.indicator.get_menu().get_children()[3].set_label(
                         'Lost: %d, Avg: %dms' %
                         ( self.packets.count( timeout ), avg( self.packets ) ),
                                                              )
-        self.indicator.get_menu().get_children()[2].set_label(
+        self.indicator.get_menu().get_children()[4].set_label(
                         'Max: %dms, Min: %dms' %
                         ( max( self.packets ), min( self.packets ) ),
                                                              )
