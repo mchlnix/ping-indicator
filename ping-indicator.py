@@ -196,12 +196,21 @@ class PingIndicator():
 
 
 if __name__ == '__main__':
-    if len(argv) > 1:
-        try:
-            timeout = int( argv[1] )
-            print 'Using timeout: ' + str(timeout) + 'ms'
-        except ValueError:
-            print 'Usage: pingindicator [timeout in milliseconds / -h, --help]'
-            exit()
+    address = "8.8.8.8"
+    name = "Internet"
+    skip_next = False
 
-    PingIndicator().run()
+    for index, arg in enumerate(argv):
+        if skip_next:
+            skip_next = False
+            continue
+
+        if arg == "-n":
+            name = argv[index+1]
+            skip_next = True
+
+        if arg == "-a":
+            address = argv[index+1]
+            skip_next = True
+
+    PingIndicator(address, name).run()
