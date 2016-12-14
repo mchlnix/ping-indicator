@@ -192,13 +192,15 @@ class PingIndicator():
                         'Max: %dms, Min: %dms' %
                         ( max( self.packets ), min( self.packets ) ),
                                                              )
-
+def print_help():
+    print( "pingindicator [-h,--help] [-a address] [-n name]" )
+    print( "example: pingindicator -a 8.8.8.8 -n 'Google DNS'" )
 
 
 if __name__ == '__main__':
     address = "8.8.8.8"
     name = "Internet"
-    skip_next = False
+    skip_next = True
 
     for index, arg in enumerate(argv):
         if skip_next:
@@ -208,9 +210,14 @@ if __name__ == '__main__':
         if arg == "-n":
             name = argv[index+1]
             skip_next = True
-
-        if arg == "-a":
+        elif arg == "-a":
             address = argv[index+1]
             skip_next = True
+        elif arg in ["-h", "--help"]:
+            print_help()
+            exit(0)
+        else:
+            print_help()
+            exit(1)
 
     PingIndicator(address, name).run()
