@@ -11,7 +11,6 @@
 # Now only prints used timeout, when one was given via commandline argument
 # Code now fits on 80 character terminals
 # Now updates the menu even when timeouts happen
-# Now tricks xfce4-panel, caching icons by path
 
 from appindicator import Indicator, STATUS_ACTIVE, STATUS_ATTENTION
 from appindicator import CATEGORY_SYSTEM_SERVICES
@@ -19,8 +18,6 @@ from collections import deque
 from subprocess import check_output, CalledProcessError, STDOUT
 from ImageDraw import Draw
 from gobject import timeout_add
-from os.path import expanduser
-from random import random
 from Image import new
 from time import strftime
 from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
@@ -41,9 +38,8 @@ avg = lambda x :  int( sum( x ) / len( x ) )
 class PingIndicator():
 
     def __init__( self ):
-        self.path = make_path()
         self.icon = new( 'RGBA', ( packet_amount, indicator_image_height ) )
-        self.icon.save( self.path )
+        self.icon.save( '/tmp/ping-indicator.png' )
 
         self.LABEL_GUIDE = '9999'
         self.online = True
@@ -92,9 +88,6 @@ class PingIndicator():
 
 
     def update_icon( self ):
-        self.path = make_path()
-        self.indicator.set_icon( self.path )
-
         draw = Draw( self.icon )
 
         (width, height) = self.icon.size
@@ -126,7 +119,7 @@ class PingIndicator():
 
         del draw             # Seen in example, unsure if necessary
 
-        self.icon.save( self.path )
+        self.icon.save( '/tmp/ping-indicator.png' )
 
         self.indicator.set_status( STATUS_ATTENTION ) # Needed, so that the
         self.indicator.set_status( STATUS_ACTIVE )    # icon updates itself
@@ -197,8 +190,7 @@ class PingIndicator():
                         ( max( self.packets ), min( self.packets ) ),
                                                              )
 
-def make_path():
-    return '/tmp/' + str(int(random() * 10)) + '.png'
+
 
 if __name__ == '__main__':
     if len(argv) > 1:
