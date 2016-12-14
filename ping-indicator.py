@@ -18,6 +18,7 @@ from collections import deque
 from subprocess import check_output, CalledProcessError, STDOUT
 from ImageDraw import Draw
 from gobject import timeout_add
+from random import random
 from Image import new
 from time import strftime
 from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
@@ -30,19 +31,21 @@ min_scale = 1./100 # in 1/ms
 indicator_image_height = 22 # in unity
 mid_thres = 2/3.  # of timeout
 good_thres = 1/3. # of timeout
-destination = '8.8.8.8' # google dns server
+path = '/tmp/ping-indicator_%d.png' % int( ( random() * 10000 ) )
 
 avg = lambda x :  int( sum( x ) / len( x ) )
 
 
 class PingIndicator():
 
-    def __init__( self ):
+    def __init__( self, address="8.8.8.8" ):
         self.icon = new( 'RGBA', ( packet_amount, indicator_image_height ) )
-        self.icon.save( '/tmp/ping-indicator.png' )
+        self.icon.save( path )
 
         self.LABEL_GUIDE = '9999'
         self.online = True
+
+        self.destination = address
 
         self.packets = deque( [], packet_amount )
         
@@ -119,7 +122,9 @@ class PingIndicator():
 
         del draw             # Seen in example, unsure if necessary
 
-        self.icon.save( '/tmp/ping-indicator.png' )
+        self.icon.save( path )
+
+        self.indicator.set_icon( path )
 
         self.indicator.set_status( STATUS_ATTENTION ) # Needed, so that the
         self.indicator.set_status( STATUS_ACTIVE )    # icon updates itself
@@ -127,13 +132,11 @@ class PingIndicator():
 
     def update_indicator( self ):
 
-        #new_label = 'offline'
-
         self.sent += 1
 
         try:
             output = check_output( [ 'ping', '-c', '1', '-W', str(timeout/1000),
-                                     destination,
+                                     self.destination,
                                    ],
                                    stderr=STDOUT,
                                  ) # man ping
