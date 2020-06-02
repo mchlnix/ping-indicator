@@ -1,5 +1,3 @@
-#!/usr/bin/python2.7 -u
-
 # Removes log functionality again
 # Now writes avg ping to log
 # Now keeps track of sent and lost pings and writes it to .config/pingindicator/ping.log
@@ -12,192 +10,146 @@
 # Code now fits on 80 character terminals
 # Now updates the menu even when timeouts happen
 
-from appindicator import Indicator, STATUS_ACTIVE, STATUS_ATTENTION
-from appindicator import CATEGORY_SYSTEM_SERVICES
 from collections import deque
-from subprocess import check_output, CalledProcessError, STDOUT
-from ImageDraw import Draw
-from gobject import timeout_add
-from random import random
-from Image import new
-from time import strftime
-from gtk import Menu, MenuItem, SeparatorMenuItem, main, main_quit
+from subprocess import CalledProcessError, STDOUT, check_output
 from sys import argv, exit
-from os import makedirs
+from time import strftime
 
-timeout = 2000 # in ms
-packet_amount = 22 # also width of indicator icon in pixels
-min_scale = 1./100 # in 1/ms
-indicator_image_height = 22 # in unity
-mid_thres = 2/3.  # of timeout
-good_thres = 1/3. # of timeout
-path = '/tmp/ping-indicator_%d.png' % int( ( random() * 10000 ) )
+from PySide2.QtCore import QRect, QSize, QTimer
+from PySide2.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
+from PySide2.QtWidgets import QApplication, QMainWindow, QMenu, QSystemTrayIcon
 
-avg = lambda x :  int( sum( x ) / len( x ) )
+timeout = 2000  # in ms
+packet_amount = 22  # also width of indicator icon in pixels
+min_scale = 1.0 / 100  # in 1/ms
+indicator_image_height = 22  # in unity
+mid_thres = 2 / 3.0  # of timeout
+good_thres = 1 / 3.0  # of timeout
 
 
-class PingIndicator():
+def avg(sequence):
+    return int(sum(sequence) / len(sequence))
 
-    def __init__( self, address="8.8.8.8", name="Internet" ):
-        self.icon = new( 'RGBA', ( packet_amount, indicator_image_height ) )
-        self.icon.save( path )
 
-        self.LABEL_GUIDE = '9999'
+class PingIndicator(QMainWindow):
+    def __init__(self, address="8.8.8.8"):
+        super(PingIndicator, self).__init__()
+
+        self.icon = QImage(QSize(packet_amount, indicator_image_height), QImage.Format_RGBA8888)
+
         self.online = True
 
         self.destination = address
 
-        self.packets = deque( [], packet_amount )
-        
+        self.packets = deque([], packet_amount)
+
         self.lost = 0
         self.sent = 0
+        self.tray_icon = QSystemTrayIcon(self)
 
-        self.indicator = Indicator( id='ping-indicator',
-                                    icon_name='ping-indicator',
-                                    category=CATEGORY_SYSTEM_SERVICES,
-                                    icon_theme_path='/tmp/',
-                                  )
-        self.indicator.set_status( STATUS_ACTIVE )
+        self.update_timer = QTimer(self)
+        self.update_timer.setInterval(int(timeout * 1.05))
+        self.update_timer.timeout.connect(self.update_indicator)
 
-        menu_item_name     = MenuItem( 'Ping: %s' % name )
-        menu_separator     = SeparatorMenuItem()
-        menu_item_since    = MenuItem( 'Online since: '
-                                        + strftime( '%H:%M:%S' ) )
-        menu_item_packets1 = MenuItem( 'Lost: -, Avg: -' )
-        menu_item_packets2 = MenuItem( 'Max: -, Min: -'  )
-        menu_separator2    = SeparatorMenuItem()
-        menu_item_reset    = MenuItem( 'Reset' )
-        menu_item_exit     = MenuItem( 'Exit'  )
-        menu_item_exit.connect(  'activate', self.stop  )
-        menu_item_reset.connect( 'activate', self.reset )
+        self.update_timer.start()
 
-        indicator_menu = Menu()
-        indicator_menu.append( menu_item_name     )
-        indicator_menu.append( menu_separator     )
-        indicator_menu.append( menu_item_since    )
-        indicator_menu.append( menu_item_packets1 )
-        indicator_menu.append( menu_item_packets2 )
-        indicator_menu.append( menu_separator2    )
-        indicator_menu.append( menu_item_reset    )
-        indicator_menu.append( menu_item_exit     )
-        indicator_menu.show_all()
+        self.reset()
 
-        self.indicator.set_menu( indicator_menu )
+    def update_icon(self):
+        self.icon.fill(QColor(0, 0, 0, 0))
 
-        timeout_add( int(timeout*1.05), self.update_indicator )
+        painter = QPainter(self.icon)
 
-    def stop( self, widget=None ):
-        main_quit()
-
-
-    def update_icon( self ):
-        draw = Draw( self.icon )
-
-        (width, height) = self.icon.size
+        (width, height) = self.icon.size().toTuple()
         width -= 1
         height -= 1
 
-        for i in range( height+1 ):
-            draw.line( (0, i, width, i ), fill=(0,0,0,0) )
+        painter.fillRect(QRect(0, 0, width, height), QColor(0, 0, 0, 0))
 
         try:
-            scale = min( 1./max( self.packets ), min_scale )
+            scale = min(1.0 / max(self.packets), min_scale)
         except ValueError:
             scale = min_scale
 
+        for (index, ping) in enumerate(list(reversed(self.packets))):
+            x = ping / float(timeout)
 
-        for ( index, ping ) in enumerate( list( reversed( self.packets ) ) ):
-            x = ping/float( timeout )
+            color = QColor(
+                int(-324 * x ** 2 + 390 * x + 138),  # R
+                int(-480 * x ** 2 + 254 * x + 226),  # G
+                int(-212 * x ** 2 + 160 * x + 52),  # B
+                255,
+            )
 
-            color = ( int( -324 * x**2 + 390 * x + 138 ), #R
-                      int( -480 * x**2 + 254 * x + 226 ), #G
-                      int( -212 * x**2 + 160 * x + 52 ),  #B
-                      255,
-                    )
+            painter.fillRect(QRect(width - index, height, width - index, height - int(scale * ping * height)), color)
 
-            draw.line( ( width - index, height, width - index,
-                         height - int ( scale * ping * height ) ),
-                         fill=color
-                     )
+        self.tray_icon.setIcon(QIcon(QPixmap(self.icon)))
+        self.tray_icon.show()
 
-        del draw             # Seen in example, unsure if necessary
-
-        self.icon.save( path )
-
-        self.indicator.set_icon( path )
-
-        self.indicator.set_status( STATUS_ATTENTION ) # Needed, so that the
-        self.indicator.set_status( STATUS_ACTIVE )    # icon updates itself
-
-
-    def update_indicator( self ):
+    def update_indicator(self):
 
         self.sent += 1
 
         try:
-            output = check_output( [ 'ping', '-c', '1', '-W', str(timeout/1000),
-                                     self.destination,
-                                   ],
-                                   stderr=STDOUT,
-                                 ) # man ping
+            output = check_output(
+                ["ping", "-c", "1", "-W", str(timeout / 1000), self.destination], stderr=STDOUT,
+            ).decode(
+                "ascii"
+            )  # man ping
 
             for line in output.splitlines():
-                pos = line.find( 'time=' )
+                pos = line.find("time=")
                 if pos != -1:
-                    new_label = line[ pos + 5 : -3 ].center( 4 )
-                    self.packets.append( round( float( new_label ), 2 ) )
+                    new_label = line[pos + 5 : -3].center(4)
+                    self.packets.append(round(float(new_label), 2))
 
                     if not self.online:
                         self.online = True
-                        self.indicator.get_menu().get_children()[2].set_label(
-                                   'Last disconnect: ' + strftime( '%H:%M:%S' ),
-                                                                             )
+                        self.tray_icon.contextMenu().actions()[0].setText("Last disconnect: " + strftime("%H:%M:%S"),)
                     break
         except CalledProcessError:
             self.lost += 1
-            self.packets.append( timeout )
+            self.packets.append(timeout)
 
             if self.online:
                 self.online = False
-                self.indicator.get_menu().get_children()[2].set_label(
-                                      'Offline since: ' + strftime( '%H:%M:%S' )
-                                                                     )
+                self.tray_icon.contextMenu().actions()[0].setText("Offline since: " + strftime("%H:%M:%S"))
 
         self.update_icon()
         self.update_menu()
 
         return True
 
-
-    def reset( self, widget=None ):
+    def reset(self):
         self.packets.clear()
         self.update_icon()
-        self.indicator.get_menu().get_children()[2].set_label( 'Online since: '
-                                                       + strftime( '%H:%M:%S' ),
-                                                             )
-        self.indicator.get_menu().get_children()[3].set_label('Lost: -, Avg: -')
-        self.indicator.get_menu().get_children()[4].set_label('Max: -, Min: -' )
+
+        menu = QMenu()
+
+        menu.addAction("Online since: " + strftime("%H:%M:%S"))
+        menu.addAction("Lost: -, Avg: -")
+        menu.addAction("Max: -, Min: -")
+        menu.addSeparator()
+        menu.addAction("Reset").triggered.connect(self.reset)
+        menu.addAction("Quit").triggered.connect(self.close)
+
+        self.tray_icon.setContextMenu(menu)
+
+    def update_menu(self):
+        self.tray_icon.contextMenu().actions()[1].setText(
+            "Lost: %d, Avg: %dms" % (self.packets.count(timeout), avg(self.packets)),
+        )
+        self.tray_icon.contextMenu().actions()[2].setText(
+            "Max: %dms, Min: %dms" % (max(self.packets), min(self.packets)),
+        )
 
 
-    def run( self ):
-        main()
-
-
-    def update_menu( self ):
-        self.indicator.get_menu().get_children()[3].set_label(
-                        'Lost: %d, Avg: %dms' %
-                        ( self.packets.count( timeout ), avg( self.packets ) ),
-                                                             )
-        self.indicator.get_menu().get_children()[4].set_label(
-                        'Max: %dms, Min: %dms' %
-                        ( max( self.packets ), min( self.packets ) ),
-                                                             )
 def print_help():
-    print( "pingindicator [-h,--help] [-a address] [-n name]" )
-    print( "example: pingindicator -a 8.8.8.8 -n 'Google DNS'" )
+    print("pingindicator [-h,--help] [-a address] [-n name]")
+    print("example: pingindicator -a 8.8.8.8 -n 'Google DNS'")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     address = "8.8.8.8"
     name = "Internet"
     skip_next = True
@@ -208,10 +160,10 @@ if __name__ == '__main__':
             continue
 
         if arg == "-n":
-            name = argv[index+1]
+            name = argv[index + 1]
             skip_next = True
         elif arg == "-a":
-            address = argv[index+1]
+            address = argv[index + 1]
             skip_next = True
         elif arg in ["-h", "--help"]:
             print_help()
@@ -220,4 +172,6 @@ if __name__ == '__main__':
             print_help()
             exit(1)
 
-    PingIndicator(address, name).run()
+    app = QApplication()
+    ping_indicator = PingIndicator(address)
+    app.exec_()
