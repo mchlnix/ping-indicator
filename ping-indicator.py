@@ -43,8 +43,6 @@ class PingIndicator(QMainWindow):
 
         self.packets = deque([], packet_amount)
 
-        self.lost = 0
-        self.sent = 0
         self.tray_icon = QSystemTrayIcon(self)
 
         self.update_timer = QTimer(self)
@@ -52,6 +50,8 @@ class PingIndicator(QMainWindow):
         self.update_timer.timeout.connect(self.update_indicator)
 
         self.update_timer.start()
+
+        self.last_time_online = strftime("%H:%M:%S")
 
         self.reset()
 
@@ -87,9 +87,6 @@ class PingIndicator(QMainWindow):
         self.tray_icon.show()
 
     def update_indicator(self):
-
-        self.sent += 1
-
         try:
             output = check_output(
                 ["ping", "-c", "1", "-W", str(timeout / 1000), self.destination], stderr=STDOUT,
@@ -105,10 +102,12 @@ class PingIndicator(QMainWindow):
 
                     if not self.online:
                         self.online = True
-                        self.tray_icon.contextMenu().actions()[0].setText("Last disconnect: " + strftime("%H:%M:%S"),)
+                        self.tray_icon.contextMenu().actions()[0].setText("Last disconnect: " + self.last_time_online)
+                    else:
+                        self.last_time_online = strftime("%H:%M:%S")
+
                     break
         except CalledProcessError:
-            self.lost += 1
             self.packets.append(timeout)
 
             if self.online:
