@@ -81,7 +81,9 @@ class PingIndicator(QMainWindow):
                 255,
             )
 
-            painter.fillRect(QRect(width - index, height, width - index, height - int(scale * ping * height)), color)
+            scaled_height = int(scale * ping * height)
+
+            painter.fillRect(QRect(width - index, height - scaled_height, 1, scaled_height), color)
 
         self.tray_icon.setIcon(QIcon(QPixmap(self.icon)))
         self.tray_icon.show()
