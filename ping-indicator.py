@@ -11,6 +11,7 @@
 # Now updates the menu even when timeouts happen
 
 from collections import deque
+from math import ceil
 from subprocess import CalledProcessError, STDOUT, check_output
 from sys import argv, exit
 from time import strftime
@@ -44,6 +45,7 @@ class PingIndicator(QMainWindow):
         self.packets = deque([], packet_amount)
 
         self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setToolTip(address)
 
         self.update_timer = QTimer(self)
         self.update_timer.setInterval(int(timeout * 1.05))
@@ -71,7 +73,7 @@ class PingIndicator(QMainWindow):
         except ValueError:
             scale = min_scale
 
-        for (index, ping) in enumerate(list(reversed(self.packets))):
+        for index, ping in enumerate(list(reversed(self.packets))):
             x = ping / float(timeout)
 
             color = QColor(
@@ -81,7 +83,7 @@ class PingIndicator(QMainWindow):
                 255,
             )
 
-            scaled_height = int(scale * ping * height)
+            scaled_height = ceil(scale * ping * height)
 
             painter.fillRect(QRect(width - index, height - scaled_height, 1, scaled_height), color)
 
@@ -99,7 +101,7 @@ class PingIndicator(QMainWindow):
             for line in output.splitlines():
                 pos = line.find("time=")
                 if pos != -1:
-                    new_label = line[pos + 5 : -3].center(4)
+                    new_label = line[pos + 5: -3].center(4)
                     self.packets.append(round(float(new_label), 2))
 
                     if not self.online:
@@ -115,6 +117,8 @@ class PingIndicator(QMainWindow):
             if self.online:
                 self.online = False
                 self.tray_icon.contextMenu().actions()[0].setText("Offline since: " + strftime("%H:%M:%S"))
+        except KeyboardInterrupt:
+            self.close()
 
         self.update_icon()
         self.update_menu()
