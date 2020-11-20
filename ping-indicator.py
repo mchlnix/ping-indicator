@@ -9,7 +9,7 @@
 # Now only prints used timeout, when one was given via commandline argument
 # Code now fits on 80 character terminals
 # Now updates the menu even when timeouts happen
-
+import os
 from collections import deque
 from math import ceil
 from subprocess import CalledProcessError, STDOUT, check_output
@@ -92,8 +92,11 @@ class PingIndicator(QMainWindow):
 
     def update_indicator(self):
         try:
+            new_env = dict(os.environ)
+            new_env['LC_ALL'] = 'C'
+
             output = check_output(
-                ["ping", "-c", "1", "-W", str(timeout / 1000), self.destination], stderr=STDOUT,
+                ["ping", "-c", "1", "-W", str(timeout / 1000), self.destination], stderr=STDOUT, env=new_env,
             ).decode(
                 "ascii"
             )  # man ping
@@ -111,12 +114,17 @@ class PingIndicator(QMainWindow):
                         self.last_time_online = strftime("%H:%M:%S")
 
                     break
-        except CalledProcessError:
+            else:
+                raise ValueError("No time could be parsed.")
+
+        except CalledProcessError as cpe:
             self.packets.append(timeout)
 
             if self.online:
                 self.online = False
                 self.tray_icon.contextMenu().actions()[0].setText("Offline since: " + strftime("%H:%M:%S"))
+
+            print(cpe)
         except KeyboardInterrupt:
             self.close()
 
